@@ -1,0 +1,11 @@
+qdrant-client>=1.9.0
+sentence-transformers
+biopython
+neo4j
+gliner
+torch
+beautifulsoup4
+lxml
+python-dotenv
+requests
+langchain-text-splitters
