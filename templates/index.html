@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Assistant - Hybrid Graph-RAG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group input[type="text"],
+        .input-group select,
+        .input-group input[type="number"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input[type="text"]:focus,
+        .input-group select:focus,
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-section {
+            display: none;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .output-section.show {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .answer-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+        }
+
+        .claims-list {
+            list-style: none;
+        }
+
+        .claim-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .claim-type {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 10px;
+            text-transform: uppercase;
+        }
+
+        .claim-type.risk {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .claim-type.warning {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .claim-type.monitoring {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .claim-type.recommendation {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .claim-statement {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .context-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .patient-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .patient-section strong {
+            color: #333;
+        }
+
+        .subheader {
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .inline-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Medical Assistant</h1>
+            <p>Hybrid Graph-RAG powered medical question answering</p>
+        </div>
+
+        <div class="error" id="error-box"></div>
+
+        <div class="input-section">
+            <div class="subheader">Select Patient</div>
+            <div class="input-group">
+                <select id="userSelect"></select>
+                <button class="btn btn-primary" id="refreshUsersBtn" onclick="loadUsers()">
+                    Refresh
+                </button>
+            </div>
+            <div class="subheader">Add New Patient</div>
+            <div class="input-group">
+                <input type="text" id="newUserId" placeholder="Patient ID (e.g., user_2)">
+                <input type="text" id="newUserName" placeholder="Name (optional)">
+            </div>
+            <div class="input-group">
+                <input type="number" id="newUserAge" placeholder="Age (optional)">
+                <input type="text" id="newUserGender" placeholder="Gender (optional)">
+                <input type="text" id="newUserBloodType" placeholder="Blood Type (optional)">
+            </div>
+            <div class="inline-actions">
+                <button class="btn btn-primary" id="createUserBtn" onclick="createUser()">
+                    Create Patient
+                </button>
+            </div>
+            <textarea 
+                id="questionInput" 
+                placeholder="Ask your medical question here... e.g., 'I have heart failure and type 2 diabetes and now I have a fever. What complications should I watch for?'"
+            ></textarea>
+            <button class="btn btn-primary" id="submitBtn" onclick="askQuestion()">
+                Ask Question
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your question...</p>
+        </div>
+
+        <div class="output-section" id="outputSection">
+            <div class="section">
+                <div class="section-title">📋 Context</div>
+                <div id="contextInfo" class="context-info"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">💬 Medical Assistant Response</div>
+                <div class="answer-box" id="answerBox"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">✅ Extracted Medical Claims</div>
+                <ul class="claims-list" id="claimsList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadUsers() {
+            const userSelect = document.getElementById('userSelect');
+            userSelect.innerHTML = '';
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                if (!data.success) {
+                    showError(data.error || 'Failed to load users');
+                    return;
+                }
+
+                const users = data.data || [];
+                if (users.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No patients found';
+                    userSelect.appendChild(option);
+                    return;
+                }
+
+                users.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u.id;
+                    option.textContent = u.name ? `${u.name} (${u.id})` : u.id;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            }
+        }
+
+        async function createUser() {
+            const userId = document.getElementById('newUserId').value.trim();
+            const name = document.getElementById('newUserName').value.trim();
+            const ageValue = document.getElementById('newUserAge').value.trim();
+            const gender = document.getElementById('newUserGender').value.trim();
+            const bloodType = document.getElementById('newUserBloodType').value.trim();
+
+            if (!userId) {
+                showError('Please enter a patient ID to create');
+                return;
+            }
+
+            const payload = {
+                user_id: userId,
+                name: name || null,
+                age: ageValue ? Number(ageValue) : null,
+                gender: gender || null,
+                blood_type: bloodType || null,
+            };
+
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    showError(data.error || 'Failed to create user');
+                    return;
+                }
+
+                await loadUsers();
+                const userSelect = document.getElementById('userSelect');
+                userSelect.value = userId;
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            }
+        }
+
+        async function askQuestion() {
+            const userId = document.getElementById('userSelect').value.trim();
+            const question = document.getElementById('questionInput').value.trim();
+            const errorBox = document.getElementById('error-box');
+            const loading = document.getElementById('loading');
+            const outputSection = document.getElementById('outputSection');
+
+            // Validation
+            if (!userId) {
+                showError('Please enter a patient ID');
+                return;
+            }
+            if (!question) {
+                showError('Please enter a question');
+                return;
+            }
+
+            // Clear error
+            errorBox.classList.remove('show');
+
+            // Show loading
+            loading.style.display = 'block';
+            outputSection.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        question: question,
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error || 'An error occurred');
+                    return;
+                }
+
+                // Display context
+                displayContext(data.context);
+
+                // Display answer
+                document.getElementById('answerBox').textContent = data.answer;
+
+                // Display claims
+                displayClaims(data.claims);
+
+                // Show output
+                outputSection.classList.add('show');
+
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayContext(context) {
+            const contextInfo = document.getElementById('contextInfo');
+            contextInfo.innerHTML = '';
+
+            if (context.patient) {
+                const patient = context.patient;
+                contextInfo.innerHTML += `
+                    <div class="info-card">
+                        <div class="info-label">Patient ID</div>
+                        <div class="info-value">${patient.patient_id || 'Unknown'}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Conditions Found</div>
+                        <div class="info-value">${patient.conditions ? patient.conditions.length : 0}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Medications</div>
+                        <div class="info-value">${patient.medications ? patient.medications.length : 0}</div>
+                    </div>
+                `;
+            }
+
+            contextInfo.innerHTML += `
+                <div class="info-card">
+                    <div class="info-label">Papers Found</div>
+                    <div class="info-value">${context.papers_found || 0}</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Wearables Available</div>
+                    <div class="info-value">${context.wearables_available ? 'Yes' : 'No'}</div>
+                </div>
+            `;
+
+            if (context.drug_interactions && !context.drug_interactions.safe) {
+                contextInfo.innerHTML += `
+                    <div class="info-card" style="border-left-color: #d32f2f; background: #ffebee;">
+                        <div class="info-label" style="color: #d32f2f;">⚠️ Drug Warnings</div>
+                        <div class="info-value" style="color: #d32f2f;">${context.drug_interactions.warnings ? context.drug_interactions.warnings.length : 0}</div>
+                    </div>
+                `;
+            }
+
+            if (context.wearables_data) {
+                displayWearables(context.wearables_data);
+            }
+        }
+
+        function displayWearables(wearables_data) {
+            const contextInfo = document.getElementById('contextInfo');
+            contextInfo.innerHTML += `
+                <div class="info-card">
+                    <div class="info-label">Wearables Data</div>
+                    <div class="info-value">${JSON.stringify(wearables_data, null, 2)}</div>
+                </div>
+            `;
+        }
+
+        function displayClaims(claims) {
+            const claimsList = document.getElementById('claimsList');
+            claimsList.innerHTML = '';
+
+            if (!claims || claims.length === 0) {
+                claimsList.innerHTML = '<li class="claim-item">No structured claims extracted.</li>';
+                return;
+            }
+
+            claims.forEach(claim => {
+                const item = document.createElement('li');
+                item.className = 'claim-item';
+                item.innerHTML = `
+                    <span class="claim-type ${claim.type}">${claim.type}</span>
+                    <span class="claim-statement">${claim.statement}</span>
+                `;
+                claimsList.appendChild(item);
+            });
+        }
+
+        function showError(message) {
+            const errorBox = document.getElementById('error-box');
+            errorBox.textContent = message;
+            errorBox.classList.add('show');
+        }
+
+        // Submit on Enter in textarea
+        document.getElementById('questionInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                askQuestion();
+            }
+        });
+
+        // Initial load
+        loadUsers();
+    </script>
+</body>
+</html>

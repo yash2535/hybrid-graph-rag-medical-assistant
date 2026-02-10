@@ -45,10 +45,9 @@ def run_hybrid_rag_pipeline():
     End-to-end Hybrid Graph-RAG execution
     """
 
-    user_id = "user_1"
+    user_id = "P001"
     question = (
-        "I have heart failure and type 2 diabetes and now I have a fever. "
-        "What complications should I watch for?"
+        "I am feeling tired from last week. Could this be related to my diabetes or medications"
     )
 
     logger.info("Starting Hybrid Graph-RAG", extra={"user_id": user_id})

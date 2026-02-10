@@ -156,7 +156,15 @@ def ingest_from_pubmed(query: str, max_results: int = 5) -> None:
 # ---------------------------------------------------------------------
 
 if __name__ == "__main__":
-    ingest_from_pubmed(
-        query="diabetes mellitus type 2",
-        max_results=5,
-    )
+    queries = [
+    "type 2 diabetes",
+    "hypertension",
+    "heart disease",
+    "asthma",
+    "chronic kidney disease",
+]
+
+for q in queries:
+    ingest_from_pubmed(query=q, max_results=5)
+
+   

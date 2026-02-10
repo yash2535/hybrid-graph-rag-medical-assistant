@@ -1,0 +1,18 @@
+# Qdrant with persistent storage.
+# Run: docker compose up -d
+# Collections and data survive container restarts.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-medical
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC (optional)
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
+    # Data persists here; survives 'docker compose down' and restarts.

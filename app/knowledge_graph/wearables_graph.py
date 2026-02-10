@@ -2,15 +2,21 @@
 Wearables Graph Reader
 
 Purpose:
-- Read wearable / vitals data from Neo4j
-- Aggregate into clinically useful summaries
-- Provide trend-level insights (NOT raw streams)
+- Read wearable / vitals FACTS from Neo4j
+- Compute deterministic statistical summaries
+- NO clinical interpretation
+- NO causal reasoning
+
+Design Principles:
+- Deterministic
+- Auditable
+- LLM-safe (facts + computed observations only)
 
 Neo4j Domain:
 Patient → WearableMetric → WearableReading
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from neo4j import GraphDatabase
 import os
 from statistics import mean
@@ -28,13 +34,13 @@ def _get_driver():
 
 
 # ------------------------------------------------------------------
-# READ: Wearables summary
+# READ: Wearable FACT summaries
 # ------------------------------------------------------------------
 
 def get_wearable_summary(user_id: str) -> Dict[str, Any]:
     """
-    Fetch wearable metrics and return summarized vitals + trends.
-    LLM-ready, low-noise, clinically relevant.
+    Fetch wearable metrics and return computed FACT summaries.
+    No medical or behavioral interpretation is performed here.
     """
 
     driver = _get_driver()
@@ -44,40 +50,42 @@ def get_wearable_summary(user_id: str) -> Dict[str, Any]:
     OPTIONAL MATCH (p)-[:HAS_METRIC]->(m:WearableMetric)
     OPTIONAL MATCH (m)-[:RECORDED_AS]->(r:WearableReading)
     RETURN
-      m.type        AS metric_type,
-      collect(r)    AS readings
+      m.type     AS metric_type,
+      collect(r) AS readings
     """
+
+    metrics = []
 
     with driver.session() as session:
         results = session.run(cypher, user_id=user_id)
 
-        metrics = []
         for record in results:
-            metrics.append(
-                _summarize_metric(
-                    record["metric_type"],
-                    record["readings"],
-                )
+            summary = _summarize_metric(
+                record["metric_type"],
+                record["readings"],
             )
+            if summary:
+                metrics.append(summary)
 
     driver.close()
 
-    # Remove empty metrics
-    metrics = [m for m in metrics if m is not None]
-
     return {
+        "facts_version": "1.0",
         "available": bool(metrics),
         "metrics": metrics,
     }
 
 
 # ------------------------------------------------------------------
-# Helpers
+# Helpers (COMPUTED OBSERVATIONS ONLY)
 # ------------------------------------------------------------------
 
-def _summarize_metric(metric_type: str, readings: List[Any]) -> Dict[str, Any] | None:
+def _summarize_metric(
+    metric_type: str,
+    readings: List[Any]
+) -> Optional[Dict[str, Any]]:
     """
-    Summarize a single metric into stats + trend.
+    Compute deterministic statistical summaries for a wearable metric.
     """
 
     if not metric_type or not readings:
@@ -98,26 +106,29 @@ def _summarize_metric(metric_type: str, readings: List[Any]) -> Dict[str, Any] |
     if not values:
         return None
 
-    summary = {
+    return {
         "metric": metric_type,
-        "latest": values[-1],
-        "average": round(mean(values), 2),
-        "min": min(values),
-        "max": max(values),
-        "trend": _detect_trend(values),
+        "latest_value": values[-1],
+        "average_value": round(mean(values), 2),
+        "min_value": min(values),
+        "max_value": max(values),
+        "trend": _detect_trend(values),  # mathematical trend only
         "readings_count": len(values),
+        "time_range": {
+            "start": str(timestamps[0]) if timestamps else None,
+            "end": str(timestamps[-1]) if timestamps else None,
+        }
     }
-
-    return summary
 
 
 def _detect_trend(values: List[float]) -> str:
     """
-    Simple trend detection (safe + explainable).
+    Simple mathematical trend detection.
+    This is NOT a clinical interpretation.
     """
 
     if len(values) < 3:
-        return "insufficient data"
+        return "insufficient-data"
 
     first = values[0]
     last = values[-1]

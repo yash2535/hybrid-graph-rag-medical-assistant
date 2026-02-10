@@ -2,11 +2,16 @@
 Drug Interaction Safety Engine
 
 Purpose:
-- Detect risky drug–drug and drug–condition interactions
-- Provide explainable, structured safety warnings
+- Extract VERIFIED drug interaction FACTS
+- Extract VERIFIED drug effect / mechanism FACTS
+- NO symptom inference
+- NO patient-specific reasoning
 - Used BEFORE calling the LLM
 
-This module MUST be deterministic and auditable.
+Design:
+- Deterministic
+- Auditable
+- Knowledge-Graph + Rule based
 """
 
 from typing import List, Dict, Any
@@ -26,25 +31,17 @@ def _get_driver():
 
 
 # ------------------------------------------------------------------
-# Public API
+# Public API (FACT EXTRACTOR)
 # ------------------------------------------------------------------
 
 def check_drug_interactions(medications: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Entry point used by Hybrid Graph-RAG pipeline.
 
-    Input:
-      medications = [
-        {"name": "Metformin", ...},
-        {"name": "Lisinopril", ...}
-      ]
-
-    Output:
-      {
-        "safe": true/false,
-        "warnings": [...],
-        "recommendations": [...]
-      }
+    Returns FACTS only:
+    - drug-drug interactions
+    - drug-condition interactions
+    - drug-effect mechanisms
     """
 
     drug_names = sorted(
@@ -52,74 +49,80 @@ def check_drug_interactions(medications: List[Dict[str, Any]]) -> Dict[str, Any]
     )
 
     if not drug_names:
-        return _safe_response("No medications available")
-
-    warnings = []
-    recommendations = []
-
-    # Rule-based checks
-    warnings.extend(_check_drug_drug_rules(drug_names))
-    warnings.extend(_check_drug_condition_rules(drug_names))
-
-    if warnings:
-        recommendations.append(
-            "Consult a healthcare provider before making any medication changes."
-        )
+        return _safe_response("No medications provided")
 
     return {
-        "safe": len(warnings) == 0,
         "checked_drugs": drug_names,
-        "warnings": warnings,
-        "recommendations": recommendations,
+        "drug_drug_interactions": _check_drug_drug_facts(drug_names),
+        "drug_condition_interactions": _check_drug_condition_facts(drug_names),
+        "drug_effect_facts": _check_drug_effect_facts(drug_names),
     }
 
 
 # ------------------------------------------------------------------
-# Rule Engines
+# FACT ENGINES
 # ------------------------------------------------------------------
 
-def _check_drug_drug_rules(drugs: List[str]) -> List[Dict[str, Any]]:
+def _check_drug_drug_facts(drugs: List[str]) -> List[Dict[str, Any]]:
     """
-    Drug–drug interaction rules.
-    (This can later be moved to Neo4j or external DB.)
+    Drug–drug interaction FACTS (demo-scoped, diabetes-focused).
     """
 
     RULES = [
         {
             "drugs": {"metformin", "contrast dye"},
             "severity": "high",
-            "message": "Risk of lactic acidosis when metformin is used with contrast agents."
+            "interaction": "Increased risk of lactic acidosis",
+            "mechanism": (
+                "Contrast agents may impair renal function, "
+                "leading to accumulation of metformin."
+            ),
+            "evidence": "clinical literature"
         },
         {
-            "drugs": {"lisinopril", "potassium supplements"},
+            "drugs": {"metformin", "insulin"},
             "severity": "moderate",
-            "message": "Increased risk of hyperkalemia with ACE inhibitors."
+            "interaction": "Increased risk of hypoglycemia",
+            "mechanism": (
+                "Both drugs lower blood glucose levels."
+            ),
+            "evidence": "clinical guidelines"
         },
+        {
+            "drugs": {"metformin", "alcohol"},
+            "severity": "high",
+            "interaction": "Increased risk of lactic acidosis",
+            "mechanism": (
+                "Alcohol affects hepatic lactate metabolism."
+            ),
+            "evidence": "drug safety literature"
+        }
     ]
 
-    warnings = []
+    facts = []
+    drug_set = set(drugs)
 
     for rule in RULES:
-        if rule["drugs"].issubset(set(drugs)):
-            warnings.append(
-                {
-                    "type": "drug-drug",
-                    "severity": rule["severity"],
-                    "message": rule["message"],
-                    "drugs_involved": sorted(rule["drugs"]),
-                }
-            )
+        if rule["drugs"].issubset(drug_set):
+            facts.append({
+                "type": "drug-drug-interaction",
+                "drugs_involved": sorted(rule["drugs"]),
+                "severity": rule["severity"],
+                "interaction": rule["interaction"],
+                "mechanism": rule["mechanism"],
+                "evidence": rule["evidence"],
+            })
 
-    return warnings
+    return facts
 
 
-def _check_drug_condition_rules(drugs: List[str]) -> List[Dict[str, Any]]:
+def _check_drug_condition_facts(drugs: List[str]) -> List[Dict[str, Any]]:
     """
-    Drug–condition interaction rules via Neo4j.
+    Drug–condition contraindication FACTS via Neo4j.
     """
 
     driver = _get_driver()
-    warnings = []
+    facts = []
 
     cypher = """
     MATCH (d:Medication)
@@ -132,18 +135,42 @@ def _check_drug_condition_rules(drugs: List[str]) -> List[Dict[str, Any]]:
         results = session.run(cypher, drug_names=drugs)
 
         for r in results:
-            warnings.append(
-                {
-                    "type": "drug-condition",
-                    "severity": r["severity"] or "moderate",
-                    "message": f"{r['drug']} may be contraindicated in patients with {r['condition']}.",
-                    "drug": r["drug"],
-                    "condition": r["condition"],
-                }
-            )
+            facts.append({
+                "type": "drug-condition-interaction",
+                "drug": r["drug"],
+                "condition": r["condition"],
+                "severity": r["severity"] or "moderate",
+                "evidence": "knowledge graph"
+            })
 
     driver.close()
-    return warnings
+    return facts
+
+
+def _check_drug_effect_facts(drugs: List[str]) -> List[Dict[str, Any]]:
+    """
+    Drug → physiological effect FACTS.
+    NO symptom inference here.
+    """
+
+    facts = []
+
+    if "metformin" in drugs:
+        facts.append({
+            "type": "drug-effect",
+            "drug": "metformin",
+            "effect": "reduced vitamin B12 absorption",
+            "mechanism": (
+                "Metformin interferes with calcium-dependent "
+                "vitamin B12 absorption in the terminal ileum."
+            ),
+            "clinical_relevance": (
+                "Long-term use has been associated with vitamin B12 deficiency."
+            ),
+            "evidence": "well-established"
+        })
+
+    return facts
 
 
 # ------------------------------------------------------------------
@@ -152,7 +179,9 @@ def _check_drug_condition_rules(drugs: List[str]) -> List[Dict[str, Any]]:
 
 def _safe_response(reason: str) -> Dict[str, Any]:
     return {
-        "safe": True,
-        "warnings": [],
-        "recommendations": [reason],
+        "checked_drugs": [],
+        "drug_drug_interactions": [],
+        "drug_condition_interactions": [],
+        "drug_effect_facts": [],
+        "note": reason,
     }

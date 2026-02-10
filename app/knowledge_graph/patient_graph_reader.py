@@ -2,9 +2,14 @@
 Patient Graph Reader
 
 Purpose:
-- Write patient-related facts into Neo4j
+- Write patient-related FACTS into Neo4j
 - Read patient medical history as clean, structured JSON
-- Used by Hybrid Graph-RAG (NO research papers here)
+- Used by Hybrid Graph-RAG (NO reasoning, NO research papers)
+
+Design Principles:
+- Deterministic
+- Auditable
+- LLM-safe (facts only, no inference)
 
 Neo4j Domain:
 Patient → Disease → Medication
@@ -29,14 +34,14 @@ def _get_driver():
 
 
 # ------------------------------------------------------------------
-# WRITE: Update patient history from question
+# WRITE: Ensure patient exists (facts only)
 # ------------------------------------------------------------------
 
 def upsert_user_from_question(user_id: str, question: str) -> None:
     """
-    Minimal update:
-    - Ensures Patient node exists
-    - (Later we may extract diseases from question automatically)
+    Minimal deterministic update:
+    - Ensure Patient node exists
+    - Does NOT extract diseases or symptoms
     """
 
     driver = _get_driver()
@@ -54,13 +59,14 @@ def upsert_user_from_question(user_id: str, question: str) -> None:
 
 
 # ------------------------------------------------------------------
-# READ: Fetch full patient profile
+# READ: Fetch patient FACTS profile
 # ------------------------------------------------------------------
 
 def get_patient_profile(user_id: str) -> Dict[str, Any]:
     """
-    Fetch complete patient medical profile as JSON.
-    This output is LLM-safe and deterministic.
+    Fetch complete patient medical profile as FACTS ONLY.
+    No inference, no reasoning.
+    Output is safe to pass into LLM context.
     """
 
     driver = _get_driver()
@@ -87,38 +93,119 @@ def get_patient_profile(user_id: str) -> Dict[str, Any]:
     driver.close()
 
     if not record:
-        return {"patient_id": user_id}
-
-    # -------------------------------------------------
-    # Build clean JSON
-    # -------------------------------------------------
+        return {
+            "patient_id": user_id,
+            "name": None,  # ADDED: Support frontend
+            "facts_version": "1.0"
+        }
 
     patient_node = record["p"]
 
-    diseases = _format_diseases(
-        record["diseases"],
-        record["disease_medications"],
-        record["lab_tests"],
-    )
-
-    medications = _format_medications(record["patient_medications"])
-
     profile = {
         "patient_id": patient_node.get("id"),
+        "name": patient_node.get("name"),  # ADDED: Support frontend
+        "age": patient_node.get("age"),    # ADDED: Support frontend
+        "gender": patient_node.get("gender"),  # ADDED: Support frontend
+        "bloodType": patient_node.get("bloodType"),  # ADDED: Support frontend
+        "facts_version": "1.0",
         "demographics": {
             "age": patient_node.get("age"),
             "gender": patient_node.get("gender"),
             "blood_type": patient_node.get("bloodType"),
         },
-        "conditions": diseases,
-        "medications": medications,
+        "conditions": _format_diseases(
+            record["diseases"],
+            record["disease_medications"],
+            record["lab_tests"],
+        ),
+        "medications": _format_medications(record["patient_medications"]),
     }
 
     return profile
 
 
 # ------------------------------------------------------------------
-# Helpers
+# NEW: Support frontend user management (ADDED FOR UI)
+# ------------------------------------------------------------------
+
+def get_all_patients() -> List[Dict[str, Any]]:
+    """
+    Get list of all patients (for frontend dropdown).
+    Returns basic facts only.
+    """
+    driver = _get_driver()
+
+    cypher = """
+    MATCH (p:Patient)
+    RETURN p.id AS id, 
+           p.name AS name, 
+           p.age AS age, 
+           p.gender AS gender, 
+           p.bloodType AS bloodType
+    ORDER BY p.id
+    """
+
+    with driver.session() as session:
+        result = session.run(cypher)
+        patients = []
+        for record in result:
+            patients.append({
+                "id": record["id"],
+                "name": record["name"],
+                "age": record["age"],
+                "gender": record["gender"],
+                "bloodType": record["bloodType"]
+            })
+
+    driver.close()
+    return patients
+
+
+def create_patient(user_id: str, name: str = None, age: int = None, 
+                   gender: str = None, blood_type: str = None) -> bool:
+    """
+    Create a new patient node (facts only).
+    Returns True if created, False if already exists.
+    """
+    driver = _get_driver()
+
+    # Check if patient exists
+    check_cypher = "MATCH (p:Patient {id: $user_id}) RETURN p"
+    
+    with driver.session() as session:
+        existing = session.run(check_cypher, user_id=user_id).single()
+        
+        if existing:
+            driver.close()
+            return False
+        
+        # Create new patient
+        create_cypher = """
+        CREATE (p:Patient {
+            id: $user_id,
+            name: $name,
+            age: $age,
+            gender: $gender,
+            bloodType: $blood_type,
+            created_at: datetime()
+        })
+        """
+        
+        session.run(
+            create_cypher,
+            user_id=user_id,
+            name=name,
+            age=age,
+            gender=gender,
+            blood_type=blood_type
+        )
+
+    driver.close()
+    return True
+
+
+# ------------------------------------------------------------------
+# Helpers (FACT NORMALIZATION ONLY)
 # ------------------------------------------------------------------
 
 def _format_diseases(
@@ -127,7 +214,7 @@ def _format_diseases(
     lab_nodes: List[Any],
 ) -> List[Dict[str, Any]]:
     """
-    Normalize diseases with linked medications + labs
+    Normalize disease-related FACTS.
     """
 
     diseases = []
@@ -146,7 +233,7 @@ def _format_diseases(
             "lab_results": [],
         }
 
-        # Attach labs
+        # Attach lab observations (facts only)
         for l in lab_nodes:
             if not l:
                 continue
@@ -161,7 +248,7 @@ def _format_diseases(
                 }
             )
 
-        # Attach medications
+        # Attach disease-related medications
         for m in medication_nodes:
             if not m:
                 continue
@@ -180,7 +267,12 @@ def _format_diseases(
 
 
 def _format_medications(nodes: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Normalize patient-level medication FACTS.
+    """
+
     meds = []
+
     for m in nodes:
         if not m:
             continue
@@ -192,6 +284,7 @@ def _format_medications(nodes: List[Any]) -> List[Dict[str, Any]]:
                 "purpose": m.get("purpose"),
             }
         )
+
     return meds
 
 
