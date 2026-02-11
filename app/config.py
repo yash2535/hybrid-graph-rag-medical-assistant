@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -13,13 +13,13 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 100
 
     EMBEDDING_MODEL_NAME: str = "BAAI/bge-m3"
-    EMBEDDING_DEVICE: str = "cpu"   # "cuda" if GPU available
+    EMBEDDING_DEVICE: str = "cpu"
     EMBEDDING_BATCH_SIZE: int = 32
 
-     # NER / GLiNER
+    # NER / GLiNER
     NER_MODEL_NAME: str = "urchade/gliner_small-v2.1"
     NER_CONFIDENCE_THRESHOLD: float = 0.3
-    NER_DEVICE: str | None = None  # "cuda", "cpu", or None = auto
+    NER_DEVICE: str | None = None
 
     NER_LABELS: list[str] = [
         "drug",
@@ -28,16 +28,15 @@ class Settings(BaseSettings):
         "symptom",
     ]
 
-        # NCBI / PubMed
+    # NCBI / PubMed
     NCBI_EMAIL: str = "yashjagdale77@gmail.com"
     NCBI_REQUEST_DELAY: float = 0.5
     MIN_TEXT_LENGTH: int = 500
 
     QDRANT_BATCH_SIZE: int = 128
 
-
-    class Config:
-        env_file = ".env"
+    # ✅ Pydantic v2 way
+    model_config = ConfigDict(env_file=".env")
 
 
 settings = Settings()

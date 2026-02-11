@@ -1,5 +1,5 @@
-from datetime import datetime
 from typing import Any, Dict, List, Optional
+from datetime import datetime, UTC
 
 SCHEMA_VERSION = "1.0"
 
@@ -38,7 +38,7 @@ def build_payload(
         # ---- schema metadata ----
         "schema_version": SCHEMA_VERSION,
         "source": "pubmed_api",
-        "retrieved_at": datetime.utcnow().isoformat() + "Z",
+        "retrieved_at": datetime.now(UTC).isoformat(),
 
         # ---- document metadata ----
         "pmid": str(pmid),

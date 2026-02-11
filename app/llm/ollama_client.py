@@ -33,7 +33,7 @@ def call_ollama(
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=120)
+        response = requests.post(url, json=payload, timeout=180)
 
         if response.status_code != 200:
             # IMPORTANT: show real Ollama error
