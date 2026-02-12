@@ -1,10 +1,22 @@
 from flask import Flask, render_template, request, jsonify
 import logging
+import os
+
+# Flask Extensions
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity
+)
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Project Imports
 from app.knowledge_graph.patient_graph_reader import (
     upsert_user_from_question,
     get_patient_profile,
-    get_all_patients,  # ADDED
-    create_patient,    # ADDED
+    create_patient,
 )
 from app.knowledge_graph.wearables_graph import get_wearable_summary
 from app.knowledge_graph.drug_interactions import check_drug_interactions
@@ -14,145 +26,151 @@ from app.rag.claim_extractor import extract_claims
 from app.llm.ollama_client import call_ollama
 from app.utils.logger import get_logger
 
+
+# ============================================================
+# App Initialization
+# ============================================================
 app = Flask(__name__)
 logger = get_logger(__name__)
-
-# Configure logging for Flask
 logging.basicConfig(level=logging.INFO)
 
+# ============================================================
+# PostgreSQL Configuration (Environment Based)
+# ============================================================
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "yash2535")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "medical_ai_user")
 
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+# ============================================================
+# JWT Configuration
+# ============================================================
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-this")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 3600  # 1 hour
+
+jwt = JWTManager(app)
+
+# ============================================================
+# Database Model
+# ============================================================
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.Text, nullable=False)
+    role = db.Column(db.String(50), default="patient")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+# ============================================================
+# Frontend Route
+# ============================================================
 @app.route("/")
 def index():
-    """Home page."""
     return render_template("index.html")
 
 
-# ------------------------------------------------------------------
-# NEW: User Management Endpoints (ADDED FOR FRONTEND)
-# ------------------------------------------------------------------
-
-@app.route("/api/users", methods=["GET"])
-def get_users():
-    """Get all patients for dropdown."""
-    try:
-        patients = get_all_patients()
-        return jsonify({
-            "success": True,
-            "data": patients
-        })
-    except Exception as e:
-        logger.exception("Error retrieving users")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@app.route("/api/users", methods=["POST"])
-def create_user():
-    """Create a new patient."""
+# ============================================================
+# AUTHENTICATION ROUTES
+# ============================================================
+@app.route("/api/register", methods=["POST"])
+def register():
     try:
         data = request.get_json()
-        
-        user_id = data.get('user_id')
-        if not user_id:
-            return jsonify({
-                "success": False,
-                "error": "user_id is required"
-            }), 400
-        
-        name = data.get('name')
-        age = data.get('age')
-        gender = data.get('gender')
-        blood_type = data.get('blood_type')
-        
-        # Create patient
-        success = create_patient(
-            user_id=user_id,
-            name=name,
-            age=age,
-            gender=gender,
-            blood_type=blood_type
-        )
-        
-        if not success:
-            return jsonify({
-                "success": False,
-                "error": f"Patient '{user_id}' already exists"
-            }), 400
-        
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({"success": False, "error": "Username and password required"}), 400
+
+        if User.query.filter_by(username=username).first():
+            return jsonify({"success": False, "error": "User already exists"}), 400
+
+        new_user = User(username=username)
+        new_user.set_password(password)
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Create Neo4j patient node
+        create_patient(user_id=username)
+
+        return jsonify({"success": True, "message": "User registered successfully"})
+
+    except Exception:
+        logger.exception("Registration error")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        user = User.query.filter_by(username=username).first()
+
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        if not user.check_password(password):
+            return jsonify({"success": False, "error": "Invalid credentials"}), 401
+
+        access_token = create_access_token(identity=username)
+
         return jsonify({
             "success": True,
-            "data": {
-                "id": user_id,
-                "name": name,
-                "age": age,
-                "gender": gender,
-                "bloodType": blood_type
-            },
-            "message": f"Patient '{user_id}' created successfully"
+            "access_token": access_token
         })
-        
-    except Exception as e:
-        logger.exception("Error creating user")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+
+    except Exception:
+        logger.exception("Login error")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ------------------------------------------------------------------
-# EXISTING: Medical Question Answering
-# ------------------------------------------------------------------
-
+# ============================================================
+# PROTECTED MEDICAL ROUTE
+# ============================================================
 @app.route("/api/ask", methods=["POST"])
+@jwt_required()
 def ask_question():
-    """
-    Main API endpoint for medical questions.
-    Runs the full Hybrid Graph-RAG pipeline.
-    """
     try:
+        user_id = get_jwt_identity()
         data = request.json
-        user_id = data.get("user_id")
         question = data.get("question", "")
 
-        if not user_id:
-            return jsonify({
-                "success": False,
-                "error": "user_id is required"
-            }), 400
-
         if not question:
-            return jsonify({
-                "success": False,
-                "error": "question is required"
-            }), 400
+            return jsonify({"success": False, "error": "question is required"}), 400
 
-        logger.info(f"Processing question for user {user_id}", extra={"question": question[:50]})
+        logger.info(f"Processing question for user {user_id}")
 
-        # 1. Update patient graph
         upsert_user_from_question(user_id, question)
-
-        # 2. Fetch patient profile
         patient_profile = get_patient_profile(user_id)
-        
+
         if not patient_profile:
-            return jsonify({
-                "success": False,
-                "error": f"Patient '{user_id}' not found"
-            }), 404
+            return jsonify({"success": False, "error": "Patient not found"}), 404
 
-        # 3. Fetch wearables
         wearables_summary = get_wearable_summary(user_id)
-
-        # 4. Search papers
         papers = search_papers(query=question, top_k=3)
 
-        # 5. Check drug interactions
         medications = patient_profile.get("medications", [])
         drug_interactions = check_drug_interactions(medications=medications)
 
-        # 6. Build context
         context = {
             "patient": patient_profile,
             "wearables_data": wearables_summary,
@@ -160,87 +178,34 @@ def ask_question():
             "drug_interactions": drug_interactions,
         }
 
-        # 7. Build prompt
         prompt = build_medical_prompt(question=question, context=context)
-
-        # 8. Call LLM
         response = call_ollama(prompt)
-
-        # 9. Extract claims
         claims = extract_claims(response)
 
-        logger.info("Question processed successfully")
-
-        # UPDATED: Format response for frontend
         return jsonify({
             "success": True,
             "answer": response,
-            "claims": claims,
-            "context": {
-                "patient": {
-                    "patient_id": patient_profile.get("patient_id"),
-                    "name": patient_profile.get("name"),
-                    "age": patient_profile.get("age"),
-                    "gender": patient_profile.get("gender"),
-                    "bloodType": patient_profile.get("bloodType"),
-                    "conditions": [c["name"] for c in patient_profile.get("conditions", [])],
-                    "medications": [m["name"] for m in patient_profile.get("medications", [])]
-                },
-                "drug_interactions": drug_interactions,
-                "papers_found": len(papers),
-                "wearables_available": wearables_summary.get("available", False),
-                "wearables_data": wearables_summary.get("data", {})
-            }
+            "claims": claims
         })
 
-    except Exception as e:
+    except Exception:
         logger.exception("Error processing question")
-        return jsonify({
-            "error": str(e), 
-            "success": False
-        }), 500
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-@app.route("/api/patient/<user_id>", methods=["GET"])
-def get_patient(user_id):
-    """Get patient profile."""
-    try:
-        profile = get_patient_profile(user_id)
-        
-        if not profile:
-            return jsonify({
-                "success": False,
-                "error": f"Patient '{user_id}' not found"
-            }), 404
-            
-        return jsonify({
-            "success": True, 
-            "data": profile
-        })
-        
-    except Exception as e:
-        logger.exception(f"Error fetching patient {user_id}")
-        return jsonify({
-            "error": str(e), 
-            "success": False
-        }), 500
-
-
+# ============================================================
+# HEALTH CHECK
+# ============================================================
 @app.route("/api/health", methods=["GET"])
 def health():
-    """Health check endpoint."""
     return jsonify({
-        "status": "ok", 
-        "message": "Medical Assistant API is running"
+        "status": "ok",
+        "message": "Medical Assistant API running (PostgreSQL + JWT Enabled)"
     })
 
 
+# ============================================================
+# RUN SERVER
+# ============================================================
 if __name__ == "__main__":
-    print("=" * 60)
-    print("🏥 Medical Assistant - Hybrid Graph-RAG API")
-    print("=" * 60)
-    print("Server: http://0.0.0.0:5000")
-    print("Health: http://0.0.0.0:5000/api/health")
-    print("=" * 60)
-    
     app.run(debug=True, host="0.0.0.0", port=5000)
