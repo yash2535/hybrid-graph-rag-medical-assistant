@@ -1,10 +1,3 @@
-Got it 👍
-Below is the **clean, ready-to-commit `README.md` in proper Markdown format**.
-You can **copy-paste this directly into `README.md`** (no quotes, no extra text).
-
----
-
-```md
 # 🧠 Hybrid Graph-RAG Medical Assistant
 
 **Neo4j + Qdrant + Local LLM (Ollama)**
