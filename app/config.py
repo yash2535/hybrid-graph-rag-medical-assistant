@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     QDRANT_BATCH_SIZE: int = 128
 
     # ✅ Pydantic v2 way
-    model_config = ConfigDict(env_file=".env")
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()

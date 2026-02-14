@@ -389,6 +389,58 @@
 
   .claim-statement { font-size: 14px; color: #374151; line-height: 1.55; }
 
+  /* ── CONFIRMATION MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal-card {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .modal-icon {
+    font-size: 32px;
+    margin-bottom: 15px;
+    display: block;
+  }
+
+  .modal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .modal-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
   .hidden { display: none !important; }
 </style>
 </head>
@@ -396,7 +448,6 @@
 <body>
 <div class="card">
 
-  <!-- ══ AUTH ══ -->
   <div id="authSection">
     <div class="auth-header">
       <div class="brand-icon">🏥</div>
@@ -436,7 +487,6 @@
     </div>
   </div>
 
-  <!-- ══ APP ══ -->
   <div id="appSection">
 
     <div class="app-header">
@@ -467,7 +517,6 @@
 
     <div class="error-box" id="appError"></div>
 
-    <!-- Output -->
     <div id="outputSection">
       <hr class="output-divider">
 
@@ -483,9 +532,25 @@
   </div>
 </div>
 
+<div id="suggestionModal" class="modal-overlay">
+  <div class="modal-card">
+    <span class="modal-icon">🩺</span>
+    <h3 class="modal-title">Update Health Profile?</h3>
+    <p id="suggestionText" class="modal-text">The system found a new medical fact.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="handleDecision(false)">No, thanks</button>
+      <button class="btn btn-primary" onclick="handleDecision(true)">Yes, Update</button>
+    </div>
+  </div>
+</div>
+
 <script>
   let token = localStorage.getItem("jwt_token");
   let currentUser = null;
+  
+  // NEW: Queue to store multiple suggestions (e.g. Fever AND Aspirin)
+  let suggestionQueue = [];
+  let currentSuggestion = null;
 
   if (token) showApp();
 
@@ -607,16 +672,17 @@
         return;
       }
 
-      // Context
+      // 1. Render Output
       renderContext(data.context);
-
-      // Answer
       document.getElementById('answerBox').textContent = data.answer;
-
-      // Claims
       renderClaims(data.claims);
-
       outputSection.classList.add('show');
+
+      // 2. CHECK FOR AUTOPILOT SUGGESTIONS (List)
+      if (data.suggestions && data.suggestions.length > 0) {
+          suggestionQueue = data.suggestions; // Load queue
+          processNextSuggestion(); // Start showing first one
+      }
 
     } catch (e) {
       showAppError("Network error: " + e.message);
@@ -626,6 +692,59 @@
     }
   }
 
+  /* ── Autograph Queue Logic ── */
+  function processNextSuggestion() {
+      if (suggestionQueue.length === 0) {
+          document.getElementById('suggestionModal').classList.remove('active');
+          return;
+      }
+      
+      currentSuggestion = suggestionQueue[0]; // Peek at first item
+      document.getElementById('suggestionText').textContent = currentSuggestion.message;
+      document.getElementById('suggestionModal').classList.add('active');
+  }
+
+  async function handleDecision(accepted) {
+      if (!currentSuggestion) return;
+
+      if (accepted) {
+          const btn = document.querySelector('#suggestionModal .btn-primary');
+          const originalText = btn.textContent;
+          btn.textContent = "Updating...";
+          btn.disabled = true;
+
+          try {
+              const res = await fetch("/api/confirm_update", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": "Bearer " + token
+                  },
+                  body: JSON.stringify({
+                      category: currentSuggestion.data.category,
+                      entity: currentSuggestion.data.entity
+                  })
+              });
+              
+              const data = await res.json();
+              if (data.success) {
+                  // Success - move to next
+              } else {
+                  alert("❌ Update Failed: " + data.error);
+              }
+          } catch (e) {
+              alert("Network Error");
+          } finally {
+              btn.textContent = originalText;
+              btn.disabled = false;
+          }
+      }
+
+      // Whether yes or no, remove current item and show next
+      suggestionQueue.shift();
+      processNextSuggestion();
+  }
+
   /* ── Render Context ── */
   function renderContext(context) {
     const el = document.getElementById('contextSection');
@@ -633,10 +752,13 @@
 
     let cards = '';
     if (context.patient) {
-      const p = context.patient;
-      cards += ctxCard("Patient ID", p.patient_id || "—");
-      cards += ctxCard("Conditions", p.conditions?.length ?? 0);
-      cards += ctxCard("Medications", p.medications?.length ?? 0);
+        const p = context.patient; 
+        const conditionsCount = p.conditions ? p.conditions.length : 0;
+        const medsCount = p.medications ? p.medications.length : 0;
+        
+        cards += ctxCard("Patient ID", p.patient_id || p.id || "—");
+        cards += ctxCard("Conditions", conditionsCount);
+        cards += ctxCard("Medications", medsCount);
     }
     cards += ctxCard("Papers Found", context.papers_found ?? 0);
     cards += ctxCard("Wearables", context.wearables_available ? "Yes" : "No");

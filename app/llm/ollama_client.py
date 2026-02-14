@@ -3,7 +3,7 @@ import requests
 
 def call_ollama(
     prompt: str,
-    model: str = "phi3:mini",
+    model: str = "mistral",
     temperature: float = 0.7,
 ) -> str:
     url = "http://localhost:11434/api/chat"
