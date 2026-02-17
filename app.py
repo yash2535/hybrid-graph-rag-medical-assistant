@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # Project Imports
 from app.knowledge_graph.patient_graph_reader import get_patient_profile, create_patient
-from app.knowledge_graph.autopilot import analyze_health_intent, apply_graph_update # <--- NEW
+from app.knowledge_graph.autopilot import analyze_health_intent, apply_graph_update
 from app.knowledge_graph.wearables_graph import get_wearable_summary
 from app.knowledge_graph.drug_interactions import check_drug_interactions
 from app.vector_store.paper_search import search_papers
@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO)
 # Database Configuration
 # ============================================================
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "yash1234")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "yash2535")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "medical_ai_user")
@@ -58,12 +58,14 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 # ============================================================
 # Routes
 # ============================================================
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/api/register", methods=["POST"])
 def register():
@@ -82,12 +84,13 @@ def register():
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        
-        create_patient(user_id=username) # Sync to Neo4j
+
+        create_patient(user_id=username)  # Sync to Neo4j
 
         return jsonify({"success": True, "message": "User registered successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -105,6 +108,7 @@ def login():
         return jsonify({"success": True, "access_token": access_token, "username": username})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/api/ask", methods=["POST"])
 @jwt_required()
@@ -126,7 +130,10 @@ def ask_question():
             for fact in facts:
                 suggestions_payload.append({
                     "message": f"I noticed you mentioned '{fact['original_term']}'. Add '{fact['normalized_term']}' to your profile?",
-                    "data": { "category": fact['category'], "entity": fact['normalized_term'] }
+                    "data": {
+                        "category": fact["category"],
+                        "entity": fact["normalized_term"],
+                    },
                 })
 
         # --- 2. RAG PIPELINE ---
@@ -135,16 +142,20 @@ def ask_question():
             create_patient(user_id=user_id)
             patient_profile = get_patient_profile(user_id)
 
+        # FIX: fetch all data sources
         wearables_summary = get_wearable_summary(user_id)
         papers = search_papers(query=question, top_k=3)
         medications = patient_profile.get("medications", []) if patient_profile else []
         drug_interactions = check_drug_interactions(medications=medications)
 
+        # FIX: use correct key names matching prompt_builder.py expectations
+        # "wearables_data" → "wearables"
+        # "drug_interactions" → "drug_facts"
         context = {
             "patient": patient_profile,
-            "wearables_data": wearables_summary,
+            "wearables": wearables_summary,       # ✅ Fixed: was "wearables_data"
             "papers": papers,
-            "drug_interactions": drug_interactions,
+            "drug_facts": drug_interactions,      # ✅ Fixed: was "drug_interactions"
         }
 
         prompt = build_medical_prompt(question=question, context=context)
@@ -155,12 +166,18 @@ def ask_question():
             "success": True,
             "answer": response,
             "claims": claims,
-            "suggestions": suggestions_payload, # <-- List of suggestions
-            "context": { "patient_name": user_id, "papers_found": len(papers) }
+            "suggestions": suggestions_payload,
+            "context": {
+                "patient_name": user_id,
+                "papers_found": len(papers),
+                "wearables_available": wearables_summary.get("available", False),  # ✅ Fixed: was bool(wearables_summary) which is always True
+            },
         })
+
     except Exception as e:
         logger.exception("Error processing question")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/api/confirm_update", methods=["POST"])
 @jwt_required()
@@ -168,16 +185,24 @@ def confirm_update():
     try:
         user_id = get_jwt_identity()
         data = request.json
-        success, message = apply_graph_update(user_id, data.get("category"), data.get("entity"))
-        
-        if success: return jsonify({"success": True, "message": message})
-        else: return jsonify({"success": False, "error": message}), 500
+        success, message = apply_graph_update(
+            user_id,
+            data.get("category"),
+            data.get("entity"),
+        )
+
+        if success:
+            return jsonify({"success": True, "message": message})
+        else:
+            return jsonify({"success": False, "error": message}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "message": "Medical Assistant API running"})
+
 
 if __name__ == "__main__":
     with app.app_context():
