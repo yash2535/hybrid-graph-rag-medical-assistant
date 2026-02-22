@@ -36,7 +36,7 @@ def call_ollama(
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=180)
+        response = requests.post(url, json=payload, timeout=460)
 
         if response.status_code != 200:
             return f"Ollama error {response.status_code}: {response.text}"

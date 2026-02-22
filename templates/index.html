@@ -6,6 +6,9 @@
 <title>Medical AI Assistant</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+<!-- ✅ FIX 1: Markdown renderer -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -116,39 +119,21 @@
     transition: all 0.2s;
   }
 
-  .btn-primary {
-    background: var(--primary);
-    color: var(--white);
-  }
+  .btn-primary { background: var(--primary); color: var(--white); }
   .btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
 
-  .btn-danger {
-    background: var(--danger);
-    color: var(--white);
-    padding: 8px 14px;
-    font-size: 13px;
-  }
+  .btn-danger { background: var(--danger); color: var(--white); padding: 8px 14px; font-size: 13px; }
   .btn-danger:hover { background: #b91c1c; }
 
-  .btn-secondary {
-    background: var(--bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover:not(:disabled) { background: var(--border); }
 
   .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
   /* ── Auth Section ── */
-  #authSection {
-    max-width: 420px;
-    margin: 0 auto;
-  }
+  #authSection { max-width: 420px; margin: 0 auto; }
 
-  .auth-header {
-    text-align: center;
-    margin-bottom: 36px;
-  }
+  .auth-header { text-align: center; margin-bottom: 36px; }
 
   .auth-header .brand-icon {
     width: 60px; height: 60px;
@@ -159,17 +144,8 @@
     margin: 0 auto 16px;
   }
 
-  .auth-header h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 26px;
-    color: var(--text);
-  }
-
-  .auth-header p {
-    color: var(--text-muted);
-    font-size: 13px;
-    margin-top: 6px;
-  }
+  .auth-header h1 { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--text); }
+  .auth-header p  { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
 
   .auth-tabs {
     display: flex;
@@ -178,156 +154,134 @@
   }
 
   .auth-tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.2s;
+    flex: 1; text-align: center; padding: 10px;
+    font-size: 14px; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s;
   }
-
-  .auth-tab.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-  }
+  .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
   .auth-form { display: none; }
   .auth-form.active { display: block; }
 
   .field { margin-bottom: 14px; }
-
-  .field label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-  }
-
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
   .field input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-family: 'DM Sans', sans-serif;
-    color: var(--text);
-    transition: border-color 0.2s;
-    background: var(--white);
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; font-family: 'DM Sans', sans-serif;
+    color: var(--text); transition: border-color 0.2s; background: var(--white);
   }
-
-  .field input:focus {
-    outline: none;
-    border-color: var(--primary);
-  }
+  .field input:focus { outline: none; border-color: var(--primary); }
 
   /* ── App Section ── */
   #appSection { display: none; }
 
   .section-label {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); margin-bottom: 8px;
   }
 
   textarea {
-    width: 100%;
-    padding: 14px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    resize: vertical;
-    min-height: 110px;
-    transition: border-color 0.2s;
-    background: var(--white);
+    width: 100%; padding: 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--text); resize: vertical; min-height: 110px;
+    transition: border-color 0.2s; background: var(--white);
   }
-
   textarea:focus { outline: none; border-color: var(--primary); }
 
   /* ── Loading ── */
   .loading-bar {
-    display: none;
-    align-items: center;
-    gap: 14px;
-    padding: 16px;
-    background: var(--primary-light);
-    border-radius: var(--radius);
-    margin-top: 16px;
-    font-size: 14px;
-    color: var(--primary);
-    font-weight: 600;
+    display: none; align-items: center; gap: 14px;
+    padding: 16px; background: var(--primary-light);
+    border-radius: var(--radius); margin-top: 16px;
+    font-size: 14px; color: var(--primary); font-weight: 600;
   }
-
   .loading-bar.show { display: flex; }
 
   .spinner {
     width: 20px; height: 20px;
-    border: 3px solid #bfdbfe;
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
+    border: 3px solid #bfdbfe; border-top-color: var(--primary);
+    border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
   }
-
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Error ── */
   .error-box {
-    display: none;
-    background: var(--danger-light);
-    color: var(--danger);
-    border: 1px solid #fecaca;
-    padding: 13px 16px;
-    border-radius: var(--radius);
-    font-size: 14px;
-    margin-top: 16px;
+    display: none; background: var(--danger-light); color: var(--danger);
+    border: 1px solid #fecaca; padding: 13px 16px;
+    border-radius: var(--radius); font-size: 14px; margin-top: 16px;
   }
-
   .error-box.show { display: block; }
 
   /* ── Output ── */
   #outputSection { display: none; margin-top: 36px; }
   #outputSection.show { display: block; }
 
-  .output-divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin-bottom: 32px;
-  }
+  .output-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 32px; }
 
   .output-heading {
-    font-family: 'DM Serif Display', serif;
-    font-size: 17px;
-    color: var(--text);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-family: 'DM Serif Display', serif; font-size: 17px;
+    color: var(--text); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
   }
 
+  /* ✅ FIX 2: answer-box now renders markdown — remove white-space:pre-wrap */
   .answer-box {
     background: var(--bg);
-    padding: 20px;
+    padding: 24px;
     border-radius: var(--radius);
     line-height: 1.75;
     color: var(--text);
     font-size: 14px;
-    white-space: pre-wrap;
   }
+
+  /* ✅ FIX 3: Markdown styles inside answer-box */
+  .answer-box h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--primary);
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .answer-box h2:first-child { margin-top: 0; }
+
+  .answer-box p  { margin-bottom: 10px; }
+  .answer-box ul { padding-left: 20px; margin-bottom: 10px; }
+  .answer-box li { margin-bottom: 6px; }
+
+  /* ✅ FIX 4: Markdown table styles */
+  .answer-box table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .answer-box th {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 700;
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .answer-box td {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .answer-box tr:nth-child(even) td { background: #f8faff; }
+
+  .answer-box strong { font-weight: 700; color: var(--text); }
+  .answer-box em     { color: var(--text-muted); }
 
   /* ── Context Cards ── */
   .context-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 12px;
     margin-bottom: 28px;
   }
@@ -338,49 +292,30 @@
     padding: 14px 16px;
     border-radius: var(--radius);
   }
-
   .ctx-card.warn { border-left-color: var(--danger); background: var(--danger-light); }
 
   .ctx-card .ctx-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted); margin-bottom: 6px;
   }
-
   .ctx-card.warn .ctx-label { color: var(--danger); }
 
-  .ctx-card .ctx-value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
+  .ctx-card .ctx-value { font-size: 20px; font-weight: 700; color: var(--text); }
   .ctx-card.warn .ctx-value { color: var(--danger); }
 
   /* ── Claims ── */
   .claim-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 13px 16px;
-    border-radius: var(--radius);
-    background: var(--bg);
-    margin-bottom: 10px;
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 16px; border-radius: var(--radius);
+    background: var(--bg); margin-bottom: 10px;
   }
 
   .badge {
-    flex-shrink: 0;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    flex-shrink: 0; padding: 4px 10px;
+    font-size: 11px; font-weight: 700;
+    border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em;
   }
-
   .badge.recommendation { background: var(--success-light); color: var(--success); }
   .badge.monitoring     { background: var(--info-light);    color: var(--info); }
   .badge.risk           { background: var(--danger-light);  color: var(--danger); }
@@ -389,57 +324,27 @@
 
   .claim-statement { font-size: 14px; color: #374151; line-height: 1.55; }
 
-  /* ── CONFIRMATION MODAL ── */
+  /* ── Modal ── */
   .modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
+    display: none; position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); z-index: 1000;
+    align-items: center; justify-content: center;
   }
   .modal-overlay.active { display: flex; }
 
   .modal-card {
-    background: white;
-    padding: 30px;
-    border-radius: 16px;
+    background: white; padding: 30px; border-radius: 16px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-    animation: fadeIn 0.3s ease;
+    width: 90%; max-width: 400px;
+    text-align: center; animation: fadeIn 0.3s ease;
   }
-  
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-  .modal-icon {
-    font-size: 32px;
-    margin-bottom: 15px;
-    display: block;
-  }
-
-  .modal-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
-    color: var(--text);
-    margin-bottom: 10px;
-  }
-
-  .modal-text {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.5;
-    margin-bottom: 24px;
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-  }
+  .modal-icon   { font-size: 32px; margin-bottom: 15px; display: block; }
+  .modal-title  { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); margin-bottom: 10px; }
+  .modal-text   { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
 
   .hidden { display: none !important; }
 </style>
@@ -448,6 +353,7 @@
 <body>
 <div class="card">
 
+  <!-- ── Auth ── -->
   <div id="authSection">
     <div class="auth-header">
       <div class="brand-icon">🏥</div>
@@ -470,7 +376,7 @@
         <input id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password">
       </div>
       <div class="error-box" id="loginError"></div>
-      <button class="btn btn-primary" style="width:100%; margin-top:6px; justify-content:center;" onclick="login()">Sign In</button>
+      <button class="btn btn-primary" style="width:100%;margin-top:6px;justify-content:center;" onclick="login()">Sign In</button>
     </div>
 
     <div id="registerForm" class="auth-form">
@@ -483,10 +389,11 @@
         <input id="regPassword" type="password" placeholder="Choose a password" autocomplete="new-password">
       </div>
       <div class="error-box" id="registerError"></div>
-      <button class="btn btn-primary" style="width:100%; margin-top:6px; justify-content:center;" onclick="register()">Create Account</button>
+      <button class="btn btn-primary" style="width:100%;margin-top:6px;justify-content:center;" onclick="register()">Create Account</button>
     </div>
   </div>
 
+  <!-- ── App ── -->
   <div id="appSection">
 
     <div class="app-header">
@@ -504,7 +411,7 @@
     </div>
 
     <div class="section-label">Your Question</div>
-    <textarea id="questionInput" placeholder="Ask your medical question… e.g. 'I have heart failure and type 2 diabetes and now have a fever. What complications should I watch for?'"></textarea>
+    <textarea id="questionInput" placeholder="Ask your medical question… e.g. 'I've been feeling dizzy lately. Could my medications be causing this?'"></textarea>
 
     <div style="margin-top:14px;">
       <button class="btn btn-primary" id="askBtn" onclick="askQuestion()">Submit Question</button>
@@ -519,12 +426,9 @@
 
     <div id="outputSection">
       <hr class="output-divider">
-
       <div id="contextSection"></div>
-
       <div class="output-heading">💬 Medical Assistant Response</div>
       <div class="answer-box" id="answerBox"></div>
-
       <div class="output-heading" style="margin-top:28px;">✅ Extracted Medical Claims</div>
       <div id="claimsContainer"></div>
     </div>
@@ -532,6 +436,7 @@
   </div>
 </div>
 
+<!-- ── Modal ── -->
 <div id="suggestionModal" class="modal-overlay">
   <div class="modal-card">
     <span class="modal-icon">🩺</span>
@@ -545,25 +450,30 @@
 </div>
 
 <script>
-  let token = localStorage.getItem("jwt_token");
-  let currentUser = null;
-  
-  // NEW: Queue to store multiple suggestions (e.g. Fever AND Aspirin)
-  let suggestionQueue = [];
+  // ── Configure marked ──────────────────────────────────────────────
+  marked.setOptions({
+    breaks: true,      // line breaks → <br>
+    gfm:    true,      // GitHub Flavored Markdown (tables, etc.)
+  });
+
+  // ── State ─────────────────────────────────────────────────────────
+  let token         = localStorage.getItem("jwt_token");
+  let currentUser   = null;
+  let suggestionQueue   = [];
   let currentSuggestion = null;
 
   if (token) showApp();
 
-  /* ── Auth Tabs ── */
+  // ── Auth Tabs ─────────────────────────────────────────────────────
   function switchTab(tab) {
-    document.querySelectorAll('.auth-tab').forEach((t,i) => {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => {
       t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
     });
-    document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+    document.getElementById('loginForm').classList.toggle('active',    tab === 'login');
     document.getElementById('registerForm').classList.toggle('active', tab === 'register');
   }
 
-  /* ── JWT ── */
+  // ── JWT ───────────────────────────────────────────────────────────
   function parseJwt(t) {
     try { return JSON.parse(atob(t.split('.')[1])); } catch { return null; }
   }
@@ -584,12 +494,12 @@
     location.reload();
   }
 
-  /* ── Register ── */
+  // ── Register ──────────────────────────────────────────────────────
   async function register() {
     const errEl = document.getElementById('registerError');
     errEl.classList.remove('show');
     try {
-      const res = await fetch("/api/register", {
+      const res  = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: regUsername.value, password: regPassword.value })
@@ -608,19 +518,19 @@
     }
   }
 
-  /* ── Login ── */
+  // ── Login ─────────────────────────────────────────────────────────
   async function login() {
     const errEl = document.getElementById('loginError');
     errEl.classList.remove('show');
     try {
-      const res = await fetch("/api/login", {
+      const res  = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: loginUsername.value, password: loginPassword.value })
       });
       const data = await res.json();
       if (data.success) {
-        token = data.access_token;
+        token       = data.access_token;
         localStorage.setItem("jwt_token", token);
         currentUser = loginUsername.value;
         showApp();
@@ -634,13 +544,54 @@
     }
   }
 
-  /* ── Ask Question ── */
+  // ── Sanitize LLM markdown output ─────────────────────────────────
+  function sanitizeMarkdown(text) {
+    const lines  = text.split('\n');
+    const clean  = [];
+    let inTable  = false;
+    let colCount = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const isTableRow = line.trim().startsWith('|');
+
+      if (isTableRow) {
+        // Count columns from first table row
+        if (!inTable) {
+          inTable  = true;
+          colCount = (line.match(/\|/g) || []).length - 1;
+        }
+
+        // Fix row: split by |, take only expected columns, rejoin
+        const cells = line.split('|').map(c => c.trim()).filter((_, i) => i > 0);
+
+        // Skip rows that are clearly malformed (too few real values)
+        const nonEmpty = cells.filter(c => c && c !== '-' && !c.match(/^-+$/));
+        if (nonEmpty.length === 0) continue;
+
+        // Truncate to expected column count
+        const fixedCells = cells.slice(0, colCount);
+        // Pad if too few
+        while (fixedCells.length < colCount) fixedCells.push('');
+
+        clean.push('| ' + fixedCells.join(' | ') + ' |');
+      } else {
+        inTable = false;
+        colCount = 0;
+        clean.push(line);
+      }
+    }
+
+    return clean.join('\n');
+  }
+
+  // ── Ask Question ──────────────────────────────────────────────────
   async function askQuestion() {
-    const question = document.getElementById('questionInput').value.trim();
-    const errEl = document.getElementById('appError');
-    const loadingBar = document.getElementById('loadingBar');
+    const question     = document.getElementById('questionInput').value.trim();
+    const errEl        = document.getElementById('appError');
+    const loadingBar   = document.getElementById('loadingBar');
     const outputSection = document.getElementById('outputSection');
-    const askBtn = document.getElementById('askBtn');
+    const askBtn       = document.getElementById('askBtn');
 
     if (!question) { showAppError("Please enter a question."); return; }
 
@@ -660,28 +611,24 @@
         body: JSON.stringify({ question })
       });
 
-      if (res.status === 401) {
-        alert("Session expired. Please login again.");
-        logout(); return;
-      }
+      if (res.status === 401) { alert("Session expired. Please login again."); logout(); return; }
 
       const data = await res.json();
+      if (!data.success) { showAppError(data.error || "Something went wrong"); return; }
 
-      if (!data.success) {
-        showAppError(data.error || "Something went wrong");
-        return;
-      }
-
-      // 1. Render Output
+      // Render output
       renderContext(data.context);
-      document.getElementById('answerBox').textContent = data.answer;
+
+      // ✅ FIX: sanitize table then render markdown
+      document.getElementById('answerBox').innerHTML = marked.parse(sanitizeMarkdown(data.answer || ""));
+
       renderClaims(data.claims);
       outputSection.classList.add('show');
 
-      // 2. CHECK FOR AUTOPILOT SUGGESTIONS (List)
+      // Autopilot suggestions
       if (data.suggestions && data.suggestions.length > 0) {
-          suggestionQueue = data.suggestions; // Load queue
-          processNextSuggestion(); // Start showing first one
+        suggestionQueue = data.suggestions;
+        processNextSuggestion();
       }
 
     } catch (e) {
@@ -692,76 +639,69 @@
     }
   }
 
-  /* ── Autograph Queue Logic ── */
+  // ── Suggestion Queue ──────────────────────────────────────────────
   function processNextSuggestion() {
-      if (suggestionQueue.length === 0) {
-          document.getElementById('suggestionModal').classList.remove('active');
-          return;
-      }
-      
-      currentSuggestion = suggestionQueue[0]; // Peek at first item
-      document.getElementById('suggestionText').textContent = currentSuggestion.message;
-      document.getElementById('suggestionModal').classList.add('active');
+    if (suggestionQueue.length === 0) {
+      document.getElementById('suggestionModal').classList.remove('active');
+      return;
+    }
+    currentSuggestion = suggestionQueue[0];
+    document.getElementById('suggestionText').textContent = currentSuggestion.message;
+    document.getElementById('suggestionModal').classList.add('active');
   }
 
   async function handleDecision(accepted) {
-      if (!currentSuggestion) return;
+    if (!currentSuggestion) return;
 
-      if (accepted) {
-          const btn = document.querySelector('#suggestionModal .btn-primary');
-          const originalText = btn.textContent;
-          btn.textContent = "Updating...";
-          btn.disabled = true;
+    if (accepted) {
+      const btn          = document.querySelector('#suggestionModal .btn-primary');
+      const originalText = btn.textContent;
+      btn.textContent    = "Updating...";
+      btn.disabled       = true;
 
-          try {
-              const res = await fetch("/api/confirm_update", {
-                  method: "POST",
-                  headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": "Bearer " + token
-                  },
-                  body: JSON.stringify({
-                      category: currentSuggestion.data.category,
-                      entity: currentSuggestion.data.entity
-                  })
-              });
-              
-              const data = await res.json();
-              if (data.success) {
-                  // Success - move to next
-              } else {
-                  alert("❌ Update Failed: " + data.error);
-              }
-          } catch (e) {
-              alert("Network Error");
-          } finally {
-              btn.textContent = originalText;
-              btn.disabled = false;
-          }
+      try {
+        const res  = await fetch("/api/confirm_update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+          body: JSON.stringify({ category: currentSuggestion.data.category, entity: currentSuggestion.data.entity })
+        });
+        const data = await res.json();
+        if (!data.success) alert("❌ Update Failed: " + data.error);
+      } catch (e) {
+        alert("Network Error");
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled    = false;
       }
+    }
 
-      // Whether yes or no, remove current item and show next
-      suggestionQueue.shift();
-      processNextSuggestion();
+    suggestionQueue.shift();
+    processNextSuggestion();
   }
 
-  /* ── Render Context ── */
+  // ── Render Context ────────────────────────────────────────────────
   function renderContext(context) {
     const el = document.getElementById('contextSection');
     if (!context) { el.innerHTML = ''; return; }
 
     let cards = '';
+
     if (context.patient) {
-        const p = context.patient; 
-        const conditionsCount = p.conditions ? p.conditions.length : 0;
-        const medsCount = p.medications ? p.medications.length : 0;
-        
-        cards += ctxCard("Patient ID", p.patient_id || p.id || "—");
-        cards += ctxCard("Conditions", conditionsCount);
-        cards += ctxCard("Medications", medsCount);
+      const p = context.patient;
+      cards += ctxCard("Patient",     p.name || p.patient_id || "—");
+      cards += ctxCard("Conditions",  p.conditions  ? p.conditions.length  : 0);
+      cards += ctxCard("Medications", p.medications ? p.medications.length : 0);
     }
+
     cards += ctxCard("Papers Found", context.papers_found ?? 0);
-    cards += ctxCard("Wearables", context.wearables_available ? "Yes" : "No");
+
+    // ✅ FIX: show wearable metric count instead of Yes/No
+    const wCount = context.wearables_count ?? 0;
+    if (wCount > 0) {
+      cards += ctxCard("Wearables", wCount + " metrics");
+    } else {
+      cards += ctxCard("Wearables", "None");
+    }
 
     if (context.drug_interactions && !context.drug_interactions.safe) {
       const n = context.drug_interactions.warnings?.length ?? 0;
@@ -781,7 +721,7 @@
     </div>`;
   }
 
-  /* ── Render Claims ── */
+  // ── Render Claims ─────────────────────────────────────────────────
   function renderClaims(claims) {
     const el = document.getElementById('claimsContainer');
     if (!claims || !claims.length) {
@@ -791,7 +731,7 @@
     el.innerHTML = claims.map(c => `
       <div class="claim-item">
         <span class="badge ${c.type || 'general'}">${c.type || 'general'}</span>
-        <span class="claim-statement">${c.statement}</span>
+        <span class="claim-statement">${c.statement || c.claim || ''}</span>
       </div>
     `).join('');
   }
@@ -802,7 +742,7 @@
     el.classList.add('show');
   }
 
-  /* ── Keyboard shortcut ── */
+  // ── Keyboard shortcut ─────────────────────────────────────────────
   document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'Enter') askQuestion();
   });

@@ -28,29 +28,30 @@ logging.basicConfig(level=logging.INFO)
 # ============================================================
 # Database Configuration
 # ============================================================
-DB_USER = os.getenv("DB_USER", "postgres")
+DB_USER     = os.getenv("DB_USER",     "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "yash2535")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "medical_ai_user")
+DB_HOST     = os.getenv("DB_HOST",     "localhost")
+DB_PORT     = os.getenv("DB_PORT",     "5432")
+DB_NAME     = os.getenv("DB_NAME",     "medical_ai_user")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+app.config["SQLALCHEMY_DATABASE_URI"]        = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-this")
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 3600
+app.config["JWT_SECRET_KEY"]                 = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-this")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"]       = 3600
 
-db = SQLAlchemy(app)
+db  = SQLAlchemy(app)
 jwt = JWTManager(app)
+
 
 # ============================================================
 # Database Model
 # ============================================================
 class User(db.Model):
     __tablename__ = "users"
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
+    id            = db.Column(db.Integer, primary_key=True)
+    username      = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
-    role = db.Column(db.String(50), default="patient")
+    role          = db.Column(db.String(50), default="patient")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -70,7 +71,7 @@ def index():
 @app.route("/api/register", methods=["POST"])
 def register():
     try:
-        data = request.get_json()
+        data     = request.get_json()
         username = data.get("username")
         password = data.get("password")
 
@@ -95,7 +96,7 @@ def register():
 @app.route("/api/login", methods=["POST"])
 def login():
     try:
-        data = request.get_json()
+        data     = request.get_json()
         username = data.get("username")
         password = data.get("password")
 
@@ -105,7 +106,11 @@ def login():
             return jsonify({"success": False, "error": "Invalid credentials"}), 401
 
         access_token = create_access_token(identity=username)
-        return jsonify({"success": True, "access_token": access_token, "username": username})
+        return jsonify({
+            "success":      True,
+            "access_token": access_token,
+            "username":     username,
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -114,63 +119,96 @@ def login():
 @jwt_required()
 def ask_question():
     try:
-        user_id = get_jwt_identity()
-        data = request.json
+        user_id  = get_jwt_identity()
+        data     = request.json
         question = data.get("question", "")
 
         if not question:
             return jsonify({"success": False, "error": "question is required"}), 400
 
-        logger.info(f"Processing question for user {user_id}")
+        logger.info(f"Processing question for user: {user_id}")
 
-        # --- 1. AUTOPILOT (Multi-Fact) ---
-        facts = analyze_health_intent(question)
+        # ── 1. AUTOPILOT — detect new health facts from question ──────
+        facts              = analyze_health_intent(question)
         suggestions_payload = []
         if facts:
             for fact in facts:
                 suggestions_payload.append({
-                    "message": f"I noticed you mentioned '{fact['original_term']}'. Add '{fact['normalized_term']}' to your profile?",
+                    "message": (
+                        f"I noticed you mentioned '{fact['original_term']}'. "
+                        f"Add '{fact['normalized_term']}' to your profile?"
+                    ),
                     "data": {
                         "category": fact["category"],
-                        "entity": fact["normalized_term"],
+                        "entity":   fact["normalized_term"],
                     },
                 })
 
-        # --- 2. RAG PIPELINE ---
+        # ── 2. Fetch patient profile from Neo4j ───────────────────────
         patient_profile = get_patient_profile(user_id)
         if not patient_profile:
             create_patient(user_id=user_id)
             patient_profile = get_patient_profile(user_id)
 
-        # FIX: fetch all data sources
+        # ── 3. Fetch wearables ────────────────────────────────────────
         wearables_summary = get_wearable_summary(user_id)
+        wearable_metrics  = wearables_summary.get("metrics", [])
+        wearables_count   = len(wearable_metrics)
+
+        # ── 4. Search research papers ─────────────────────────────────
         papers = search_papers(query=question, top_k=3)
-        medications = patient_profile.get("medications", []) if patient_profile else []
+
+        # ── 5. Drug interaction check ─────────────────────────────────
+        medications       = patient_profile.get("medications", []) if patient_profile else []
         drug_interactions = check_drug_interactions(medications=medications)
 
-        # FIX: use correct key names matching prompt_builder.py expectations
-        # "wearables_data" → "wearables"
-        # "drug_interactions" → "drug_facts"
+        # ── 6. Build context for prompt ───────────────────────────────
         context = {
-            "patient": patient_profile,
-            "wearables": wearables_summary,       # ✅ Fixed: was "wearables_data"
-            "papers": papers,
-            "drug_facts": drug_interactions,      # ✅ Fixed: was "drug_interactions"
+            "patient":    patient_profile,
+            "wearables":  wearables_summary,   # key matches prompt_builder
+            "papers":     papers,
+            "drug_facts": drug_interactions,   # key matches prompt_builder
         }
 
-        prompt = build_medical_prompt(question=question, context=context)
+        # ── 7. Build prompt + call LLM ────────────────────────────────
+        prompt   = build_medical_prompt(question=question, context=context)
         response = call_ollama(prompt)
+
+        # ── 8. Extract structured claims ──────────────────────────────
         claims = extract_claims(response)
 
+        # ── 9. Build conditions + medications summary for frontend ─────
+        conditions_count = len(patient_profile.get("conditions",  [])) if patient_profile else 0
+        meds_count       = len(patient_profile.get("medications", [])) if patient_profile else 0
+        labs_count       = len(patient_profile.get("lab_results", [])) if patient_profile else 0
+
+        # ── 10. Drug warnings for frontend card ───────────────────────
+        drug_warnings = []
+        if drug_interactions:
+            drug_warnings = drug_interactions.get("drug_drug_interactions", [])
+
         return jsonify({
-            "success": True,
-            "answer": response,
-            "claims": claims,
+            "success":     True,
+            "answer":      response,
+            "claims":      claims,
             "suggestions": suggestions_payload,
             "context": {
-                "patient_name": user_id,
+                # Patient summary cards
+                "patient_id":        user_id,
+                "conditions_count":  conditions_count,
+                "meds_count":        meds_count,
+                "labs_count":        labs_count,
+
+                # Wearables
+                "wearables_available": wearables_count > 0,
+                "wearables_count":     wearables_count,      # ✅ NEW — shows actual count
+
+                # Papers
                 "papers_found": len(papers),
-                "wearables_available": wearables_summary.get("available", False),  # ✅ Fixed: was bool(wearables_summary) which is always True
+
+                # Drug warnings
+                "drug_warnings_count": len(drug_warnings),
+                "has_drug_warnings":   len(drug_warnings) > 0,
             },
         })
 
@@ -184,7 +222,7 @@ def ask_question():
 def confirm_update():
     try:
         user_id = get_jwt_identity()
-        data = request.json
+        data    = request.json
         success, message = apply_graph_update(
             user_id,
             data.get("category"),
@@ -192,7 +230,7 @@ def confirm_update():
         )
 
         if success:
-            return jsonify({"success": True, "message": message})
+            return jsonify({"success": True,  "message": message})
         else:
             return jsonify({"success": False, "error": message}), 500
     except Exception as e:
@@ -208,6 +246,7 @@ if __name__ == "__main__":
     with app.app_context():
         try:
             db.create_all()
+            logger.info("✅ Database tables created")
         except Exception as e:
-            print(f"❌ DB Error: {e}")
+            logger.error(f"❌ DB Error: {e}")
     app.run(debug=True, host="0.0.0.0", port=5000)
