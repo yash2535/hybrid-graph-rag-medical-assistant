@@ -32,8 +32,17 @@ class Settings(BaseSettings):
     NCBI_EMAIL: str = "yashjagdale77@gmail.com"
     NCBI_REQUEST_DELAY: float = 0.5
     MIN_TEXT_LENGTH: int = 500
-
     QDRANT_BATCH_SIZE: int = 128
+
+    # ─── NEW: DB & JWT CONFIGURATION ───
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "yash1234"
+    DB_HOST: str = "localhost"
+    DB_PORT: str = "5432"
+    DB_NAME: str = "medical_ai_user"
+
+    JWT_SECRET_KEY: str = "super-secret-key-change-this"
+    JWT_ACCESS_TOKEN_EXPIRES: int = 3600
 
     # ✅ Pydantic v2 way
     model_config = ConfigDict(env_file=".env", extra="ignore")
