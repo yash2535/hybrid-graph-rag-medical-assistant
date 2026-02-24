@@ -18,3 +18,14 @@ Thumbs.db
 
 # IDE
 .vscode/
+# Coverage
+.coverage
+htmlcov/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual env
+.venv/
