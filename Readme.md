@@ -1,14 +1,6 @@
-
-```markdown
 # 🧠 Hybrid Graph-RAG Medical Assistant
 
-[![Coverage Report](https://img.shields.io/badge/Test%20Coverage-View%20Report-blue)](https://yash2535.github.io/hybrid-graph-rag-medical-assistant/coverage/)
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![Neo4j](https://img.shields.io/badge/Neo4j-GraphDB-green)
-![Qdrant](https://img.shields.io/badge/Qdrant-VectorDB-orange)
-![Ollama](https://img.shields.io/badge/LLM-Ollama-black)
-
-> 🔎 **Live Test Coverage Dashboard**  
+> 🔎 **Live Test Coverage Dashboard:**  
 > https://yash2535.github.io/hybrid-graph-rag-medical-assistant/coverage/
 
 ---
@@ -17,10 +9,10 @@
 
 The **Hybrid Graph-RAG Medical Assistant** is a privacy-preserving medical question-answering system that combines:
 
-- 🧩 **Structured reasoning** using a Neo4j Knowledge Graph  
-- 📚 **Semantic retrieval** using Qdrant Vector Database  
-- 🧠 **Local LLM inference** using Ollama  
-- ⚠️ **Safety validation layer** for medical reliability  
+- 🧩 **Structured reasoning** using a Neo4j Knowledge Graph
+- 📚 **Semantic retrieval** using a Qdrant Vector Database
+- 🧠 **Local LLM inference** using Ollama
+- ⚠️ **Safety validation** for medical reliability
 
 It integrates structured patient context with research paper embeddings to generate **safe, explainable, and auditable responses** — fully offline.
 
@@ -29,124 +21,125 @@ It integrates structured patient context with research paper embeddings to gener
 ## ✨ Key Features
 
 - 🧠 Hybrid Graph + Vector Retrieval
-- 🏥 Patient-specific reasoning using Neo4j
-- 📄 Research-backed answers using semantic search
+- 🏥 Patient-specific reasoning via Neo4j
+- 📄 Research-backed answers via semantic search
 - ⚠️ Drug interaction & safety checks
 - 📊 Structured claims output for transparency
-- 🔒 Fully local execution (no cloud dependency)
-- 🧪 300+ automated tests with coverage dashboard
+- 🔒 Fully local execution — no cloud dependency
+- 🧪 300+ automated tests with live coverage dashboard
 
 ---
 
-## 🏗️ High-Level Architecture
+## 🏗️ Architecture
 
 ```
-
 User Question
-│
-▼
-Neo4j Patient Graph ─────────────┐
-├── Context Builder ───► Local LLM (Ollama)
+      │
+      ▼
+Neo4j Patient Graph ──────────────┐
+ ├── Context Builder ────────► Local LLM (Ollama)
 Qdrant Research Papers ───────────┘
-│
-▼
-Safe + Structured Medical Response
-
+                                  │
+                                  ▼
+              Safe + Structured Medical Response
 ```
 
 ---
 
 ## 🧩 Core Components
 
-| Layer | Technology | Purpose |
-|-------|------------|----------|
-| Graph Database | Neo4j | Patient data, conditions, medications |
-| Vector Database | Qdrant | Semantic research paper retrieval |
-| Embeddings | BAAI/bge-m3 | Dense vector representation |
-| LLM | phi3:mini (Ollama) | Local answer generation |
-| Safety Layer | Custom logic | Drug interaction & red-flag checks |
-| Testing | Pytest | 300+ automated tests |
+| Layer          | Technology       | Purpose                                      |
+|----------------|------------------|----------------------------------------------|
+| Graph Database | Neo4j            | Patient data, conditions, medications        |
+| Vector Database| Qdrant           | Semantic research paper retrieval            |
+| Embeddings     | BAAI/bge-m3      | Dense vector representation                  |
+| LLM            | phi3:mini (Ollama) | Local answer generation                    |
+| Safety Layer   | Custom logic     | Drug interaction & red-flag checks           |
+| Testing        | Pytest           | 300+ automated tests                         |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-
 hybrid-graph-rag-medical-assistant/
 │
 ├── app/
-│   ├── rag/
-│   │   └── graph_rag_pipeline.py
-│   ├── vector_store/
-│   │   ├── qdrant_store.py
-│   │   └── paper_search.py
+│   ├── fetchers/
+│   │   └── pubmed_fetcher.py
+│   ├── ingestion/
+│   │   └── pubmed_ingest.py
 │   ├── knowledge_graph/
-│   ├── processing/
-│   │   ├── embedding.py
-│   │   └── entity_extractor.py
+│   │   ├── autopilot.py
+│   │   ├── patient_graph_reader.py
+│   │   ├── setup_neo4j.py
+│   │   └── wearables_graph.py
 │   ├── llm/
 │   │   └── ollama_client.py
+│   ├── processing/
+│   │   ├── chunker.py
+│   │   ├── embedding.py
+│   │   └── entity_extractor.py
+│   ├── rag/
+│   │   ├── claim_extractor.py
+│   │   ├── fact_checker.py
+│   │   ├── graph_rag_pipeline.py
+│   │   ├── prompt_builder.py
+│   │   └── qdrant_search.py
 │   ├── routes/
-│   └── utils/
+│   │   └── api.py
+│   ├── schema/
+│   │   └── schema_builder.py
+│   ├── utils/
+│   │   └── logger.py
+│   ├── vector_store/
+│   │   ├── paper_search.py
+│   │   └── qdrant_store.py
+│   ├── config.py
+│   └── models.py
 │
+├── docs/
+│   ├── htmlcov/
+│   └── templates/
 ├── tests/
-├── docs/coverage/          # GitHub Pages coverage report
-├── requirements.txt
+├── app.py
+├── docker-compose.yml
 ├── pytest.ini
 └── README.md
-
 ```
 
 ---
 
 ## ⚙️ Prerequisites
 
-### 1️⃣ Python
-```
+### 1. Python 3.9+
 
-Python 3.9+
-
-````
-
-### 2️⃣ Neo4j
+### 2. Neo4j
 - Neo4j Desktop or AuraDB
-- Running on: `bolt://localhost:7687`
+- Default connection: `bolt://localhost:7687`
 
-### 3️⃣ Qdrant (Docker)
+### 3. Qdrant (via Docker)
 
 ```bash
 docker run -d -p 6333:6333 qdrant/qdrant
-````
-
-Check:
-
-```
-http://localhost:6333
 ```
 
-### 4️⃣ Ollama (Local LLM)
+Verify at: `http://localhost:6333`
 
-Install:
-👉 [https://ollama.com](https://ollama.com)
+### 4. Ollama (Local LLM)
 
-Pull lightweight model:
+Install from: https://ollama.com
 
 ```bash
 ollama pull phi3:mini
-```
-
-Verify:
-
-```bash
-ollama list
+ollama list   # verify installation
 ```
 
 ---
 
 ## 🔐 Environment Variables
 
-Create a `.env` file:
+Create a `.env` file in the project root:
 
 ```env
 # Neo4j
@@ -165,9 +158,9 @@ OLLAMA_MODEL=phi3:mini
 
 ---
 
-## 🚀 Setup Instructions
+## 🚀 Setup
 
-### 1️⃣ Create Virtual Environment
+### 1. Create a Virtual Environment
 
 ```bash
 python -m venv .venv
@@ -175,69 +168,63 @@ python -m venv .venv
 
 Activate:
 
-**Windows**
-
 ```bash
+# Windows
 .venv\Scripts\activate
-```
 
-**Linux / macOS**
-
-```bash
+# Linux / macOS
 source .venv/bin/activate
 ```
 
----
-
-### 2️⃣ Install Dependencies
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+### 3. Confirm All Services Are Running
 
-### 3️⃣ Ensure Services Are Running
-
-| Service | Status                                         |
-| ------- | ---------------------------------------------- |
-| Neo4j   | Running                                        |
-| Qdrant  | [http://localhost:6333](http://localhost:6333) |
-| Ollama  | `ollama serve`                                 |
+| Service | Check                                          |
+|---------|------------------------------------------------|
+| Neo4j   | Running on `bolt://localhost:7687`             |
+| Qdrant  | http://localhost:6333                          |
+| Ollama  | Run `ollama serve` if not already active       |
 
 ---
 
-## ▶️ Run the Full Pipeline
+## ▶️ Running the Pipeline
 
 ```bash
 python -m app.rag.graph_rag_pipeline
 ```
 
-Pipeline Steps:
+The pipeline executes the following steps:
 
 1. Update patient graph
 2. Retrieve patient profile
 3. Retrieve wearable summaries
-4. Retrieve research papers
+4. Retrieve relevant research papers
 5. Run drug interaction checks
-6. Generate safe answer via LLM
+6. Generate a safe, structured answer via LLM
 
 ---
 
-## 🧪 Run Tests
+## 🧪 Testing
+
+Run the test suite:
 
 ```bash
 pytest tests/test_suite.py -v
 ```
 
-Generate coverage:
+Generate a local HTML coverage report:
 
 ```bash
 pytest tests/test_suite.py --cov=app --cov-report=html:docs/coverage
 ```
 
-📊 Live coverage:
-[https://yash2535.github.io/hybrid-graph-rag-medical-assistant/coverage/](https://yash2535.github.io/hybrid-graph-rag-medical-assistant/coverage/)
+📊 Live coverage dashboard:  
+https://yash2535.github.io/hybrid-graph-rag-medical-assistant/coverage/
 
 ---
 
@@ -245,7 +232,7 @@ pytest tests/test_suite.py --cov=app --cov-report=html:docs/coverage
 
 ```
 ===== FINAL ANSWER =====
-Personalized medical guidance
+Personalized medical guidance based on patient profile and research context.
 
 ===== STRUCTURED CLAIMS =====
 - Risk assessment
@@ -257,70 +244,27 @@ Personalized medical guidance
 
 ## 🚨 System Requirements
 
-| Model     | RAM Requirement |
-| --------- | --------------- |
-| phi3:mini | ~3GB            |
-| llama3    | >4.6GB          |
+| Model      | Minimum RAM |
+|------------|-------------|
+| phi3:mini  | ~3 GB       |
+| llama3     | > 4.6 GB    |
 
-For 8GB systems → **phi3:mini recommended**
+> For systems with 8 GB RAM, **phi3:mini** is recommended.
 
 ---
 
 ## 🔮 Future Improvements
 
-* GPU acceleration
-* Sparse + dense hybrid retrieval
-* Clinical citation linking (PMID)
-* Web UI (React / Streamlit)
-* FHIR-compatible patient records
-* CI/CD auto coverage deployment
+- GPU acceleration
+- Sparse + dense hybrid retrieval
+- Clinical citation linking (PMID)
+- Web UI (React / Streamlit)
+- FHIR-compatible patient records
+- CI/CD automated coverage deployment
 
 ---
 
 ## 📜 Disclaimer
 
-This system is for **educational and research purposes only**.
+This system is intended for **educational and research purposes only**.  
 It does not replace professional medical advice, diagnosis, or treatment.
-
----
-
-## 👨‍💻 Author
-
-**Yash Jagdale**
-AI Systems | Graph RAG | Healthcare AI | Mainframe + AI Hybrid Systems
-
-````
-
----
-
-# 🚀 After Updating
-
-Run:
-
-```bash
-git add README.md
-git commit -m "Refactor README with structured professional format"
-git push origin main
-````
-
----
-
-Your repository will now look:
-
-✔ Structured
-✔ Professional
-✔ Recruiter-ready
-✔ Research-grade
-✔ Portfolio-strong
-
----
-
-If you'd like next-level polish, I can:
-
-* Add architecture diagram image
-* Add system flow diagram (PNG)
-* Add CI badge
-* Add project maturity level section
-* Make it conference-paper style
-
-Just tell me 👌
