@@ -164,7 +164,7 @@ if __name__ == "__main__":
     "chronic kidney disease",
 ]
 
-for q in queries:
-    ingest_from_pubmed(query=q, max_results=5)
+    for q in queries:
+        ingest_from_pubmed(query=q, max_results=5)
 
    

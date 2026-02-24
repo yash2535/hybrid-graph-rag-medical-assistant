@@ -36,12 +36,12 @@ class Settings(BaseSettings):
 
     # ─── NEW: DB & JWT CONFIGURATION ───
     DB_USER: str = "postgres"
-    DB_PASSWORD: str = "yash1234"
+    DB_PASSWORD: str = "yash2535"
     DB_HOST: str = "localhost"
     DB_PORT: str = "5432"
     DB_NAME: str = "medical_ai_user"
 
-    JWT_SECRET_KEY: str = "super-secret-key-change-this"
+    JWT_SECRET_KEY: str = "a_very_secure_random_32_plus_character_secret_key_123"
     JWT_ACCESS_TOKEN_EXPIRES: int = 3600
 
     # ✅ Pydantic v2 way

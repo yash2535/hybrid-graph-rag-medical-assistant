@@ -73,6 +73,9 @@ MEDICATION SAFETY FACTS
 ========================
 RELEVANT MEDICAL LITERATURE
 ========================
+Rules: Cite ONLY papers listed below. Include journal + year.
+If the section below says "No research papers available", skip ## What the Research Says entirely.
+========================
 {_format_papers(papers)}
 
 ========================
@@ -94,12 +97,7 @@ RESPONSE FORMAT (MANDATORY — FOLLOW EXACTLY)
 |--------|---------|--------------|------|
 [one row per reading, real values only, no placeholder text]
 
-## What the Research Says
-- Reference ONLY the papers provided above.
-- State the finding in plain language.
-- Include journal name and year.
-- If no papers were provided, skip this section entirely.
-- Do NOT fabricate or assume any research findings.
+
 
 ## Key Considerations
 - Summarize the most relevant safety or health considerations.
@@ -124,30 +122,23 @@ Always end with exactly this line:
 ========================
 STRICT OUTPUT RULES
 ========================
-- Do NOT skip the "Direct Answer" section — it is mandatory.
+- Direct Answer: ONE word first — YES or NO. Then 2 sentences max. Do NOT skip.
+- Data Table: real values and dates ONLY. Zero narrative text in table cells.
+- Research: Cite ONLY the papers provided in RELEVANT MEDICAL LITERATURE above.
+  Include journal name and year. If that section contains "No research papers available",
+  skip ## What the Research Says entirely. Do NOT fabricate findings.
 - Do NOT introduce conditions or medications not listed in Patient Facts.
-- Do NOT use generic advice that ignores the patient's actual numbers.
-- Do NOT leak any internal system values or labels into the response.
-- Keep total response concise — quality over length.
-- One clear answer. No wandering off topic.
-========================
-STRICT OUTPUT RULES
-========================
-- Direct Answer: ONE word first — YES or NO. Then 2 sentences max.
-- Data Table: values and dates ONLY. Zero narrative text in table cells.
-- Research: If no papers provided write EXACTLY:
-  "No research papers available."
-  Then STOP. Do not add any sentences after this.
 - Do NOT mention any metric unrelated to the question.
 - Do NOT add explanations inside table cells.
+- Do NOT leak any internal system values or labels into the response.
+- Do NOT use generic advice that ignores the patient's actual numbers.
 - Maximum 2 sentences per bullet point.
-- EVERY section is mandatory. Do not skip any section.
-- Never truncate mid-sentence. If running long, 
-  shorten bullet points but complete every section.
-- Only reference metrics directly relevant to the question.
-  If question is about cholesterol, do not discuss glucose.
+- EVERY section is mandatory except ## What the Research Says (skip if no papers).
+- Never truncate mid-sentence — shorten bullet points if needed but complete every section.
+- Keep total response concise — quality over length.
+========================
 """
-
+   
     return prompt.strip()
 
 
